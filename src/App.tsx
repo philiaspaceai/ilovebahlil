@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Sparkles, Database, Wifi, WifiOff, Loader2 } from 'lucide-react';
+import { Plus, Sparkles, Database, Wifi, WifiOff, Loader2, Search, X } from 'lucide-react';
 import { Note } from './types';
 import { getNotes, createNote, updateNote, deleteNote } from './lib/noteService';
 import { isSupabaseConfigured } from './lib/supabase';
@@ -16,6 +16,8 @@ export default function App() {
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [viewingNote, setViewingNote] = useState<Note | null>(null);
   const [noteToDelete, setNoteToDelete] = useState<number | null>(null);
+  const [searchInput, setSearchInput] = useState('');
+  const [activeSearchQuery, setActiveSearchQuery] = useState('');
   const [dbStatus, setDbStatus] = useState<'checking' | 'connected' | 'error' | 'local'>(
     isSupabaseConfigured ? 'checking' : 'local'
   );
@@ -74,6 +76,24 @@ export default function App() {
     setIsModalOpen(true);
   };
 
+  const filteredNotes = notes.filter(note => {
+    if (!activeSearchQuery) return true;
+    // Match case (case-sensitive) search across title, note, note2, and name
+    return note.title.includes(activeSearchQuery) ||
+           note.note.includes(activeSearchQuery) ||
+           (note.note2 && note.note2.includes(activeSearchQuery)) ||
+           note.name.includes(activeSearchQuery);
+  });
+
+  const handleSearch = () => {
+    setActiveSearchQuery(searchInput);
+  };
+
+  const handleClearSearch = () => {
+    setSearchInput('');
+    setActiveSearchQuery('');
+  };
+
   const renderStatusIndicator = () => {
     switch (dbStatus) {
       case 'checking':
@@ -129,6 +149,39 @@ export default function App() {
 
       {/* Main Content */}
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Search Bar */}
+        <div className="mb-8 flex gap-2">
+          <div className="relative flex-grow">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-pink-400" />
+            </div>
+            <input
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSearch();
+              }}
+              placeholder="Cari note (Match Case)..."
+              className="w-full pl-11 pr-10 py-3 bg-white/80 backdrop-blur-sm border border-pink-200 rounded-full shadow-sm focus:ring-2 focus:ring-pink-400 focus:border-transparent outline-none transition-all text-pink-900 placeholder:text-pink-300"
+            />
+            {searchInput && (
+              <button
+                onClick={handleClearSearch}
+                className="absolute inset-y-0 right-0 pr-4 flex items-center text-pink-400 hover:text-pink-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            )}
+          </div>
+          <button
+            onClick={handleSearch}
+            className="bg-pink-500 hover:bg-pink-600 text-white px-6 py-3 rounded-full shadow-sm font-bold transition-colors flex-shrink-0"
+          >
+            Cari
+          </button>
+        </div>
+
         {dbStatus === 'local' && (
           <div className="mb-8 bg-pink-100/50 border border-pink-200 rounded-2xl p-4 text-pink-800 text-sm text-center">
             <strong>Notice:</strong> Supabase is not configured yet. Notes are currently saved in your browser's local storage. 
@@ -147,18 +200,20 @@ export default function App() {
             <Sparkles className="animate-spin mb-4" size={32} />
             <p className="font-bold animate-pulse">Loading cute notes...</p>
           </div>
-        ) : notes.length === 0 ? (
+        ) : filteredNotes.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <div className="text-6xl mb-4">🌸</div>
-            <h2 className="text-2xl font-bold text-pink-900 mb-2">No notes yet!</h2>
+            <h2 className="text-2xl font-bold text-pink-900 mb-2">
+              {activeSearchQuery ? "Note tidak ditemukan" : "No notes yet!"}
+            </h2>
             <p className="text-pink-600 max-w-sm">
-              Start your journey by creating your first cute note for 2級攻略.
+              {activeSearchQuery ? "Coba cari dengan kata kunci lain yaa." : "Start your journey by creating your first cute note for 2級攻略."}
             </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             <AnimatePresence mode="popLayout">
-              {notes.map((note) => (
+              {filteredNotes.map((note) => (
                 <NoteCard
                   key={note.id}
                   note={note}
