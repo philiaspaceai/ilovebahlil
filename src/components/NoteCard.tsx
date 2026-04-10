@@ -42,7 +42,7 @@ export function NoteCard({ note, onEdit, onDelete, onView }: NoteCardProps) {
       if (typeof window !== 'undefined' && window.navigator && window.navigator.vibrate) {
         window.navigator.vibrate(50);
       }
-    }, 500); // 500ms long press
+    }, 300); // 300ms long press
   };
 
   const handleTouchEnd = () => {

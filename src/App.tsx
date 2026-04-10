@@ -83,7 +83,7 @@ export default function App() {
            note.note.includes(activeSearchQuery) ||
            (note.note2 && note.note2.includes(activeSearchQuery)) ||
            note.name.includes(activeSearchQuery);
-  });
+  }).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   const handleSearch = () => {
     setActiveSearchQuery(searchInput);
