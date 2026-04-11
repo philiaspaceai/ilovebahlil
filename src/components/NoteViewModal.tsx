@@ -1,4 +1,4 @@
-import { X } from 'lucide-react';
+import { X, Wand2 } from 'lucide-react';
 import { Note } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { format } from 'date-fns';
@@ -7,9 +7,10 @@ interface NoteViewModalProps {
   isOpen: boolean;
   onClose: () => void;
   note: Note | null;
+  onMagicClick?: (title: string) => void;
 }
 
-export function NoteViewModal({ isOpen, onClose, note }: NoteViewModalProps) {
+export function NoteViewModal({ isOpen, onClose, note, onMagicClick }: NoteViewModalProps) {
   if (!note) return null;
 
   return (
@@ -32,8 +33,17 @@ export function NoteViewModal({ isOpen, onClose, note }: NoteViewModalProps) {
             <div className="bg-white rounded-[2rem] shadow-xl shadow-pink-200/50 overflow-hidden flex flex-col max-h-[85vh]">
               <div className="p-6 sm:p-8 border-b border-pink-50 flex justify-between items-start shrink-0">
                 <div>
-                  <h2 className="text-2xl font-bold text-pink-900 mb-3 leading-tight">
+                  <h2 className="text-2xl font-bold text-pink-900 mb-3 leading-tight flex items-center gap-2 flex-wrap">
                     {note.title}
+                    {onMagicClick && (
+                      <button
+                        onClick={() => onMagicClick(note.title)}
+                        className="p-1.5 bg-pink-100 text-pink-500 hover:bg-pink-200 hover:text-pink-600 rounded-full transition-colors shadow-sm"
+                        title="Lihat Penjelasan Bunpou"
+                      >
+                        <Wand2 size={18} />
+                      </button>
+                    )}
                   </h2>
                   <div className="flex flex-wrap items-center gap-3 text-sm">
                     <span className="bg-pink-500 text-white px-3 py-1 rounded-full font-bold shadow-sm">

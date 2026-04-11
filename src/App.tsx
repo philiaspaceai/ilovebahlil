@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
-import { Plus, Sparkles, Database, Wifi, WifiOff, Loader2, Search, X } from 'lucide-react';
+import { Plus, Database, Wifi, WifiOff, Loader2, Library, Layers } from 'lucide-react';
 import { Note } from './types';
 import { getNotes, createNote, updateNote, deleteNote } from './lib/noteService';
 import { isSupabaseConfigured } from './lib/supabase';
-import { NoteCard } from './components/NoteCard';
 import { NoteModal } from './components/NoteModal';
 import { DeleteConfirmModal } from './components/DeleteConfirmModal';
 import { NoteViewModal } from './components/NoteViewModal';
-import { AnimatePresence } from 'motion/react';
+import { NoteDeck } from './components/NoteDeck';
+import { SearchNote } from './components/SearchNote';
+import { BunpouExplanation } from './components/BunpouExplanation';
 
 export default function App() {
   const [notes, setNotes] = useState<Note[]>([]);
@@ -16,8 +17,13 @@ export default function App() {
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [viewingNote, setViewingNote] = useState<Note | null>(null);
   const [noteToDelete, setNoteToDelete] = useState<number | null>(null);
-  const [searchInput, setSearchInput] = useState('');
-  const [activeSearchQuery, setActiveSearchQuery] = useState('');
+  
+  // View State
+  const [currentView, setCurrentView] = useState<'decks' | 'all' | 'deck_detail' | 'bunpou_explanation'>('decks');
+  const [selectedDeckTitle, setSelectedDeckTitle] = useState<string | null>(null);
+  const [selectedBunpouTitle, setSelectedBunpouTitle] = useState<string | null>(null);
+  const [previousView, setPreviousView] = useState<'decks' | 'all' | 'deck_detail'>('decks');
+
   const [dbStatus, setDbStatus] = useState<'checking' | 'connected' | 'error' | 'local'>(
     isSupabaseConfigured ? 'checking' : 'local'
   );
@@ -76,22 +82,36 @@ export default function App() {
     setIsModalOpen(true);
   };
 
-  const filteredNotes = notes.filter(note => {
-    if (!activeSearchQuery) return true;
-    // Match case (case-sensitive) search across title, note, note2, and name
-    return note.title.includes(activeSearchQuery) ||
-           note.note.includes(activeSearchQuery) ||
-           (note.note2 && note.note2.includes(activeSearchQuery)) ||
-           note.name.includes(activeSearchQuery);
-  }).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-
-  const handleSearch = () => {
-    setActiveSearchQuery(searchInput);
+  const handleSelectDeck = (title: string) => {
+    setSelectedDeckTitle(title);
+    setCurrentView('deck_detail');
   };
 
-  const handleClearSearch = () => {
-    setSearchInput('');
-    setActiveSearchQuery('');
+  const handleBackToDecks = () => {
+    setSelectedDeckTitle(null);
+    setCurrentView('decks');
+  };
+
+  const toggleView = () => {
+    if (currentView === 'all') {
+      setCurrentView('decks');
+      setSelectedDeckTitle(null);
+    } else {
+      setCurrentView('all');
+      setSelectedDeckTitle(null);
+    }
+  };
+
+  const handleMagicClick = (title: string) => {
+    setViewingNote(null); // Close the modal
+    setPreviousView(currentView as 'decks' | 'all' | 'deck_detail'); // Remember where we came from
+    setSelectedBunpouTitle(title);
+    setCurrentView('bunpou_explanation');
+  };
+
+  const handleBackFromBunpou = () => {
+    setSelectedBunpouTitle(null);
+    setCurrentView(previousView);
   };
 
   const renderStatusIndicator = () => {
@@ -142,46 +162,26 @@ export default function App() {
             </h1>
           </div>
           
-          {/* Status Indicator */}
-          {renderStatusIndicator()}
+          <div className="flex items-center gap-4">
+            {renderStatusIndicator()}
+            
+            {/* View Toggle Button */}
+            <button
+              onClick={toggleView}
+              className="p-2.5 bg-pink-50 text-pink-500 hover:bg-pink-100 rounded-xl transition-colors border border-pink-100 shadow-sm flex items-center gap-2"
+              title={currentView === 'all' ? "Lihat Decks" : "Koleksi Semua Note"}
+            >
+              {currentView === 'all' ? <Layers size={20} /> : <Library size={20} />}
+              <span className="hidden sm:inline font-bold text-sm">
+                {currentView === 'all' ? "Decks" : "Koleksi"}
+              </span>
+            </button>
+          </div>
         </div>
       </header>
 
       {/* Main Content */}
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Search Bar */}
-        <div className="mb-8 flex gap-2">
-          <div className="relative flex-grow">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-pink-400" />
-            </div>
-            <input
-              type="text"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleSearch();
-              }}
-              placeholder="Cari note (Match Case)..."
-              className="w-full pl-11 pr-10 py-3 bg-white/80 backdrop-blur-sm border border-pink-200 rounded-full shadow-sm focus:ring-2 focus:ring-pink-400 focus:border-transparent outline-none transition-all text-pink-900 placeholder:text-pink-300"
-            />
-            {searchInput && (
-              <button
-                onClick={handleClearSearch}
-                className="absolute inset-y-0 right-0 pr-4 flex items-center text-pink-400 hover:text-pink-600"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            )}
-          </div>
-          <button
-            onClick={handleSearch}
-            className="bg-pink-500 hover:bg-pink-600 text-white px-6 py-3 rounded-full shadow-sm font-bold transition-colors flex-shrink-0"
-          >
-            Cari
-          </button>
-        </div>
-
         {dbStatus === 'local' && (
           <div className="mb-8 bg-pink-100/50 border border-pink-200 rounded-2xl p-4 text-pink-800 text-sm text-center">
             <strong>Notice:</strong> Supabase is not configured yet. Notes are currently saved in your browser's local storage. 
@@ -195,53 +195,57 @@ export default function App() {
           </div>
         )}
 
-        {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-20 text-pink-300">
-            <Sparkles className="animate-spin mb-4" size={32} />
-            <p className="font-bold animate-pulse">Loading cute notes...</p>
-          </div>
-        ) : filteredNotes.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="text-6xl mb-4">🌸</div>
-            <h2 className="text-2xl font-bold text-pink-900 mb-2">
-              {activeSearchQuery ? "Note tidak ditemukan" : "No notes yet!"}
-            </h2>
-            <p className="text-pink-600 max-w-sm">
-              {activeSearchQuery ? "Coba cari dengan kata kunci lain yaa." : "Start your journey by creating your first cute note for 2級攻略."}
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            <AnimatePresence mode="popLayout">
-              {filteredNotes.map((note) => (
-                <NoteCard
-                  key={note.id}
-                  note={note}
-                  onEdit={openEditNoteModal}
-                  onDelete={handleDeleteClick}
-                  onView={setViewingNote}
-                />
-              ))}
-            </AnimatePresence>
-          </div>
+        {currentView === 'decks' && (
+          <NoteDeck notes={notes} onSelectDeck={handleSelectDeck} />
+        )}
+
+        {currentView === 'all' && (
+          <SearchNote 
+            notes={notes} 
+            isLoading={isLoading} 
+            onEdit={openEditNoteModal} 
+            onDelete={handleDeleteClick} 
+            onView={setViewingNote} 
+          />
+        )}
+
+        {currentView === 'deck_detail' && selectedDeckTitle && (
+          <SearchNote 
+            notes={notes.filter(n => n.title === selectedDeckTitle)} 
+            isLoading={isLoading} 
+            onEdit={openEditNoteModal} 
+            onDelete={handleDeleteClick} 
+            onView={setViewingNote}
+            title={selectedDeckTitle}
+            onBack={handleBackToDecks}
+          />
+        )}
+
+        {currentView === 'bunpou_explanation' && selectedBunpouTitle && (
+          <BunpouExplanation 
+            bunpou={selectedBunpouTitle} 
+            onBack={handleBackFromBunpou} 
+          />
         )}
       </main>
 
       {/* Floating Action Button */}
-      <button
-        onClick={openNewNoteModal}
-        className="fixed bottom-8 right-8 w-16 h-16 bg-pink-400 hover:bg-pink-500 text-white rounded-full shadow-lg shadow-pink-300/50 flex items-center justify-center transition-transform hover:scale-105 active:scale-95 z-30"
-        aria-label="Add new note"
-      >
-        <Plus size={32} />
-      </button>
+      {currentView !== 'bunpou_explanation' && (
+        <button
+          onClick={openNewNoteModal}
+          className="fixed bottom-8 right-8 w-16 h-16 bg-pink-400 hover:bg-pink-500 text-white rounded-full shadow-lg shadow-pink-300/50 flex items-center justify-center transition-transform hover:scale-105 active:scale-95 z-30"
+          aria-label="Add new note"
+        >
+          <Plus size={32} />
+        </button>
+      )}
 
       {/* Modals */}
       <NoteModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSave={handleSaveNote}
-        initialData={editingNote}
+        initialData={editingNote || (currentView === 'deck_detail' && selectedDeckTitle ? { title: selectedDeckTitle } as Note : null)}
       />
 
       <DeleteConfirmModal
@@ -254,6 +258,7 @@ export default function App() {
         isOpen={viewingNote !== null}
         onClose={() => setViewingNote(null)}
         note={viewingNote}
+        onMagicClick={handleMagicClick}
       />
     </div>
   );
